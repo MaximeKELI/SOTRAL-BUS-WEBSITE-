@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOTRAL TOGO - Gestion des Tickets de Bus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <!-- Ajout de Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <!-- Ajout de la bibliothèque QRCode.js -->
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+    <style>
+        /* Styles pour la carte */
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .route-display {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        /* Styles pour le paiement */
+        .payment-section {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+        .payment-methods {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .payment-method {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .payment-method:hover {
+            border-color: #4CAF50;
+            background-color: #f1f8f1;
+        }
+        .payment-method.active {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        .payment-method i {
+            font-size: 24px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .payment-details {
+            display: none;
+            margin-top: 20px;
+        }
+        #qrcode-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        #qrcode {
+            display: inline-block;
+            margin: 0 auto;
+        }
+        .payment-confirmation {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background-color: #e8f5e9;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="animate__animated animate__fadeInDown">
+            <div class="header-content">
+                <img src="logo_sotral.jpeg" alt="Logo SOTRAL" class="logo">
+                <h1>SOTRAL TOGO<br><span>Système de Réservation de Tickets</span></h1>
+            </div>
+            <div class="user-actions">
+                <button id="loginBtn" class="btn-auth">Connexion</button>
+                <button id="registerBtn" class="btn-auth">Inscription</button>
+            </div>
+        </header>
+
+        <nav class="animate__animated animate__fadeIn">
+            <ul>
+                <li><a href="#" class="active" id="navReserver">Réserver</a></li>
+                <li><a href="#" id="navMesTickets">Mes Tickets</a></li>
+                <li><a href="#" id="navHoraires">Horaires</a></li>
+                <li><a href="#" id="navTarifs">Tarifs</a></li>
+                <li><a href="#" id="navContact">Contact</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <section id="reservationSection" class="content-section animate__animated animate__fadeIn">
+                <div class="reservation-container">
+                    <div class="reservation-form">
+                        <h2><i class="fas fa-bus"></i> Réserver un ticket</h2>
+                        <form id="reservationForm">
+                            <div class="form-group">
+                                <label for="nom"><i class="fas fa-user"></i> Nom complet:</label>
+                                <input type="text" id="nom" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="depart"><i class="fas fa-map-marker-alt"></i> Ville de départ:</label>
+                                <select id="depart" required>
+                                    <option value="">-- Sélectionnez --</option>
+                                    <option value="Lomé">Lomé</option>
+                                    <option value="Kara">Kara</option>
+                                    <option value="Sokodé">Sokodé</option>
+                                    <option value="Atakpamé">Atakpamé</option>
+                                    <option value="Dapaong">Dapaong</option>
+                                    <option value="Tsévié">Tsévié</option>
+                                    <option value="Aného">Aného</option>
+                                    <option value="Kpalimé">Kpalimé</option>
+                                    <option value="Bassar">Bassar</option>
+                                    <option value="Mango">Mango</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="arrivee"><i class="fas fa-flag-checkered"></i> Ville d'arrivée:</label>
+                                <select id="arrivee" required>
+                                    <option value="">-- Sélectionnez --</option>
+                                    <option value="Lomé">Lomé</option>
+                                    <option value="Kara">Kara</option>
+                                    <option value="Sokodé">Sokodé</option>
+                                    <option value="Atakpamé">Atakpamé</option>
+                                    <option value="Dapaong">Dapaong</option>
+                                    <option value="Tsévié">Tsévié</option>
+                                    <option value="Aného">Aného</option>
+                                    <option value="Kpalimé">Kpalimé</option>
+                                    <option value="Bassar">Bassar</option>
+                                    <option value="Mango">Mango</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="date"><i class="fas fa-calendar-alt"></i> Date de voyage:</label>
+                                    <input type="date" id="date" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="heure"><i class="fas fa-clock"></i> Heure de départ:</label>
+                                    <select id="heure" required>
+                                        <option value="">-- Sélectionnez --</option>
+                                        <option value="06:00">06:00</option>
+                                        <option value="08:00">08:00</option>
+                                        <option value="10:00">10:00</option>
+                                        <option value="12:00">12:00</option>
+                                        <option value="14:00">14:00</option>
+                                        <option value="16:00">16:00</option>
+                                        <option value="18:00">18:00</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="places"><i class="fas fa-users"></i> Nombre de places:</label>
+                                    <input type="number" id="places" min="1" max="10" value="1" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="classe"><i class="fas fa-couch"></i> Classe:</label>
+                                    <select id="classe">
+                                        <option value="Economique">Économique</option>
+                                        <option value="Confort">Confort</option>
+                                        <option value="VIP">VIP</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <button type="submit" class="btn-reserver">
+                                    <i class="fas fa-ticket-alt"></i> Réserver maintenant
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Section de paiement -->
+                        <div id="paymentSection" class="payment-section">
+                            <h3><i class="fas fa-money-bill-wave"></i> Méthode de paiement</h3>
+                            
+                            <div class="payment-methods">
+                                <div class="payment-method" data-method="mobile-money">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    <h4>Mobile Money</h4>
+                                    <p>Paiement par Flooz ou T-Money</p>
+                                </div>
+                                <div class="payment-method" data-method="carte">
+                                    <i class="fas fa-credit-card"></i>
+                                    <h4>Carte Bancaire</h4>
+                                    <p>Visa, Mastercard</p>
+                                </div>
+                                <div class="payment-method active" data-method="qrcode">
+                                    <i class="fas fa-qrcode"></i>
+                                    <h4>QR Code</h4>
+                                    <p>Scannez pour payer</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Détails pour paiement par QR Code -->
+                            <div id="qrcodeDetails" class="payment-details" style="display: block;">
+                                <p>Scannez le QR Code ci-dessous avec votre application mobile pour effectuer le paiement :</p>
+                                <div id="qrcode-container">
+                                    <div id="qrcode"></div>
+                                    <p>Montant à payer: <span id="paymentAmount">0</span> FCFA</p>
+                                </div>
+                                <p>Ou utilisez le code suivant: <strong id="paymentCode">SOTRAL-XXXX-XXXX</strong></p>
+                                
+                                <div class="form-group">
+                                    <button id="verifyPaymentBtn" class="btn-reserver">
+                                        <i class="fas fa-check-circle"></i> Vérifier le paiement
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Détails pour Mobile Money -->
+                            <div id="mobileMoneyDetails" class="payment-details">
+                                <div class="form-group">
+                                    <label for="mobileNumber">Numéro Mobile Money:</label>
+                                    <input type="tel" id="mobileNumber" placeholder="Ex: 90 12 34 56">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mobileProvider">Opérateur:</label>
+                                    <select id="mobileProvider">
+                                        <option value="flooz">Flooz</option>
+                                        <option value="tmoney">T-Money</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <button id="payMobileBtn" class="btn-reserver">
+                                        <i class="fas fa-paper-plane"></i> Envoyer la demande de paiement
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Détails pour Carte Bancaire -->
+                            <div id="cardDetails" class="payment-details">
+                                <div class="form-group">
+                                    <label for="cardNumber">Numéro de carte:</label>
+                                    <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="cardExpiry">Date d'expiration:</label>
+                                        <input type="text" id="cardExpiry" placeholder="MM/AA">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cardCvv">CVV:</label>
+                                        <input type="text" id="cardCvv" placeholder="123">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <button id="payCardBtn" class="btn-reserver">
+                                        <i class="fas fa-lock"></i> Payer maintenant
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Confirmation de paiement -->
+                            <div id="paymentConfirmation" class="payment-confirmation">
+                                <i class="fas fa-check-circle" style="font-size: 48px; color: #4CAF50;"></i>
+                                <h3>Paiement confirmé!</h3>
+                                <p>Votre réservation a été confirmée. Vous recevrez votre ticket par email.</p>
+                                <p>Numéro de confirmation: <strong id="confirmationNumber">SOTRAL-123456</strong></p>
+                                <button id="viewTicketBtn" class="btn-reserver">
+                                    <i class="fas fa-ticket-alt"></i> Voir mon ticket
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="reservation-map animate__animated animate__fadeInRight">
+                        <h3><i class="fas fa-map-marked-alt"></i> Carte des trajets</h3>
+                        <div id="map"></div>
+                        <div class="route-display">
+                            <p><i class="fas fa-route"></i> Distance: <span id="distance">--</span> km</p>
+                            <p><i class="fas fa-clock"></i> Durée estimée: <span id="duree">--</span> h</p>
+                            <p><i class="fas fa-money-bill-wave"></i> Prix approximatif: <span id="prix">--</span> FCFA</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="ticketsSection" class="content-section" style="display:none;">
+                <h2><i class="fas fa-ticket-alt"></i> Mes Tickets</h2>
+                <div class="tickets-actions">
+                    <input type="text" id="searchTickets" placeholder="Rechercher un ticket...">
+                    <select id="filterStatus">
+                        <option value="all">Tous les statuts</option>
+                        <option value="confirmé">Confirmé</option>
+                        <option value="annulé">Annulé</option>
+                        <option value="utilisé">Utilisé</option>
+                    </select>
+                </div>
+                <div id="ticketsContainer" class="tickets-grid"></div>
+            </section>
+            
+            <section id="horairesSection" class="content-section" style="display:none;">
+                <h2><i class="fas fa-clock"></i> Horaires des bus</h2>
+                <div class="schedule-container">
+                    <!-- Contenu des horaires chargé dynamiquement -->
+                </div>
+            </section>
+            
+            <section id="tarifsSection" class="content-section" style="display:none;">
+                <h2><i class="fas fa-money-bill-wave"></i> Tarifs</h2>
+                <div class="pricing-container">
+                    <!-- Contenu des tarifs chargé dynamiquement -->
+                </div>
+            </section>
+            
+            <section id="contactSection" class="content-section" style="display:none;">
+                <h2><i class="fas fa-envelope"></i> Contact</h2>
+                <div class="contact-container">
+                    <!-- Formulaire de contact -->
+                </div>
+            </section>
+        </main>
+        
+        <footer class="animate__animated animate__fadeInUp">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>SOTRAL TOGO</h3>
+                    <p>Voyagez en toute sécurité et confort avec le transporteur national.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Contacts</h3>
+                    <p><i class="fas fa-phone"></i> +228 98 60 00 18</p>
+                    <p><i class="fas fa-envelope"></i> contact@sotral.tg</p>
+                    <p><i class="fas fa-map-marker-alt"></i> Lomé, Avenue de la Libération</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Réseaux sociaux</h3>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-whatsapp"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2023 SOTRAL TOGO - Tous droits réservés</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content animate__animated animate__fadeInDown">
+            <span class="close-modal">&times;</span>
+            <h2>Connexion</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Mot de passe:</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn-modal">Se connecter</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="registerModal" class="modal">
+        <div class="modal-content animate__animated animate__fadeInDown">
+            <span class="close-modal">&times;</span>
+            <h2>Inscription</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="regName">Nom complet:</label>
+                    <input type="text" id="regName" required>
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email:</label>
+                    <input type="email" id="regEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPhone">Téléphone:</label>
+                    <input type="tel" id="regPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Mot de passe:</label>
+                    <input type="password" id="regPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="regConfirmPassword">Confirmer le mot de passe:</label>
+                    <input type="password" id="regConfirmPassword" required>
+                </div>
+                <button type="submit" class="btn-modal">S'inscrire</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="ticketModal" class="modal">
+        <div class="modal-content animate__animated animate__fadeInDown">
+            <span class="close-modal">&times;</span>
+            <div id="ticketModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Font Awesome pour les icônes -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <!-- Ajout de Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="script.js"></script>
+    <script>
+        // Initialisation de la carte
+        document.addEventListener('DOMContentLoaded', function() {
+            // Coordonnées du Togo
+            const togoCoords = [8.6195, 0.8248];
+            
+            // Initialisation de la carte centrée sur le Togo
+            const map = L.map('map').setView(togoCoords, 7);
+            
+            // Ajout du fond de carte OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Coordonnées des villes (approximatives)
+            const villes = {
+                "Lomé": [6.1725, 1.2314],
+                "Kara": [9.5513, 1.1865],
+                "Sokodé": [8.9833, 1.1333],
+                "Atakpamé": [7.5333, 1.1333],
+                "Dapaong": [10.8667, 0.2167],
+                "Tsévié": [6.4333, 1.2167],
+                "Aného": [6.2333, 1.6],
+                "Kpalimé": [6.9, 0.6333],
+                "Bassar": [9.25, 0.7833],
+                "Mango": [10.3667, 0.4667]
+            };
+            
+            // Ajout des marqueurs pour chaque ville
+            Object.keys(villes).forEach(ville => {
+                L.marker(villes[ville]).addTo(map)
+                    .bindPopup(ville);
+            });
+            
+            // Variables pour stocker les marqueurs de départ et d'arrivée
+            let departMarker = null;
+            let arriveeMarker = null;
+            let routeLine = null;
+            
+            // Fonction pour calculer la distance entre deux points (simplifié)
+            function calculerDistance(depart, arrivee) {
+                // Conversion des degrés en radians
+                const lat1 = depart[0] * Math.PI / 180;
+                const lon1 = depart[1] * Math.PI / 180;
+                const lat2 = arrivee[0] * Math.PI / 180;
+                const lon2 = arrivee[1] * Math.PI / 180;
+                
+                // Rayon de la Terre en km
+                const R = 6371;
+                
+                // Différences de coordonnées
+                const dLat = lat2 - lat1;
+                const dLon = lon2 - lon1;
+                
+                // Formule de Haversine
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(lat1) * Math.cos(lat2) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                
+                return R * c;
+            }
+            
+            // Écouteurs d'événements pour les sélecteurs de ville
+            document.getElementById('depart').addEventListener('change', function() {
+                updateMap();
+            });
+            
+            document.getElementById('arrivee').addEventListener('change', function() {
+                updateMap();
+            });
+            
+            // Fonction pour mettre à jour la carte en fonction des sélections
+            function updateMap() {
+                const departSelect = document.getElementById('depart');
+                const arriveeSelect = document.getElementById('arrivee');
+                const departVille = departSelect.value;
+                const arriveeVille = arriveeSelect.value;
+                
+                // Supprimer les anciens marqueurs et la ligne de route
+                if (departMarker) map.removeLayer(departMarker);
+                if (arriveeMarker) map.removeLayer(arriveeMarker);
+                if (routeLine) map.removeLayer(routeLine);
+                
+                // Réinitialiser les informations
+                document.getElementById('distance').textContent = '--';
+                document.getElementById('duree').textContent = '--';
+                document.getElementById('prix').textContent = '--';
+                
+                // Si les deux villes sont sélectionnées
+                if (departVille && arriveeVille && departVille !== arriveeVille) {
+                    const departCoords = villes[departVille];
+                    const arriveeCoords = villes[arriveeVille];
+                    
+                    // Ajouter les nouveaux marqueurs
+                    departMarker = L.marker(departCoords, {
+                        icon: L.divIcon({
+                            className: 'custom-icon',
+                            html: '<i class="fas fa-map-marker-alt" style="color: blue; font-size: 24px;"></i>',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 24]
+                        })
+                    }).addTo(map)
+                    .bindPopup(`Départ: ${departVille}`);
+                    
+                    arriveeMarker = L.marker(arriveeCoords, {
+                        icon: L.divIcon({
+                            className: 'custom-icon',
+                            html: '<i class="fas fa-map-marker-alt" style="color: red; font-size: 24px;"></i>',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 24]
+                        })
+                    }).addTo(map)
+                    .bindPopup(`Arrivée: ${arriveeVille}`);
+                    
+                    // Tracer la ligne entre les deux points
+                    routeLine = L.polyline([departCoords, arriveeCoords], {
+                        color: 'green',
+                        weight: 3,
+                        dashArray: '5, 5'
+                    }).addTo(map);
+                    
+                    // Ajuster la vue pour voir les deux points
+                    map.fitBounds([departCoords, arriveeCoords]);
+                    
+                    // Calculer et afficher les informations
+                    const distance = calculerDistance(departCoords, arriveeCoords);
+                    const duree = (distance / 60).toFixed(1); // Estimation: 60 km/h
+                    const prix = (distance * 100).toFixed(0); // Estimation: 100 FCFA/km
+                    
+                    document.getElementById('distance').textContent = distance.toFixed(1);
+                    document.getElementById('duree').textContent = duree;
+                    document.getElementById('prix').textContent = prix;
+                }
+            }
+            
+            // Gestion du formulaire de réservation
+            document.getElementById('reservationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Afficher la section de paiement
+                document.getElementById('paymentSection').style.display = 'block';
+                
+                // Calculer le montant total
+                const places = parseInt(document.getElementById('places').value);
+                const prixKm = parseFloat(document.getElementById('prix').textContent) || 0;
+                const classe = document.getElementById('classe').value;
+                
+                let prixTotal = prixKm * places;
+                
+                // Appliquer des coefficients selon la classe
+                if (classe === 'Confort') {
+                    prixTotal *= 1.5;
+                } else if (classe === 'VIP') {
+                    prixTotal *= 2;
+                }
+                
+                // Mettre à jour le montant affiché
+                document.getElementById('paymentAmount').textContent = prixTotal.toFixed(0);
+                
+                // Générer un QR Code pour le paiement
+                generateQRCode(prixTotal);
+                
+                // Faire défiler jusqu'à la section de paiement
+                document.getElementById('paymentSection').scrollIntoView({ behavior: 'smooth' });
+            });
+            
+            // Fonction pour générer un QR Code
+            function generateQRCode(amount) {
+                // Nettoyer le conteneur précédent
+                document.getElementById('qrcode').innerHTML = '';
+                
+                // Générer un code de transaction unique
+                const transactionCode = 'SOTRAL-' + Math.floor(100000 + Math.random() * 900000);
+                document.getElementById('paymentCode').textContent = transactionCode;
+                
+                // Créer les données pour le QR Code
+                const paymentData = {
+                    merchant: 'SOTRAL TOGO',
+                    account: 'TG00123456789',
+                    amount: amount,
+                    currency: 'XOF',
+                    reference: transactionCode,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Convertir en JSON et générer le QR Code
+                const qr = new QRCode(document.getElementById('qrcode'), {
+                    text: JSON.stringify(paymentData),
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+            
+            // Gestion des méthodes de paiement
+            document.querySelectorAll('.payment-method').forEach(method => {
+                method.addEventListener('click', function() {
+                    // Retirer la classe active de toutes les méthodes
+                    document.querySelectorAll('.payment-method').forEach(m => {
+                        m.classList.remove('active');
+                    });
+                    
+                    // Ajouter la classe active à la méthode sélectionnée
+                    this.classList.add('active');
+                    
+                    // Masquer tous les détails de paiement
+                    document.querySelectorAll('.payment-details').forEach(detail => {
+                        detail.style.display = 'none';
+                    });
+                    
+                    // Afficher les détails correspondants
+                    const methodType = this.getAttribute('data-method');
+                    document.getElementById(methodType + 'Details').style.display = 'block';
+                });
+            });
+            
+            // Simulation de vérification de paiement
+            document.getElementById('verifyPaymentBtn').addEventListener('click', function() {
+                // Simuler une vérification de paiement
+                setTimeout(function() {
+                    // Afficher la confirmation
+                    document.getElementById('paymentConfirmation').style.display = 'block';
+                    
+                    // Générer un numéro de confirmation
+                    const confirmationNumber = 'CNF-' + Math.floor(100000 + Math.random() * 900000);
+                    document.getElementById('confirmationNumber').textContent = confirmationNumber;
+                    
+                    // Faire défiler jusqu'à la confirmation
+                    document.getElementById('paymentConfirmation').scrollIntoView({ behavior: 'smooth' });
+                }, 2000);
+            });
+            
+            // Bouton pour voir le ticket après paiement
+            document.getElementById('viewTicketBtn').addEventListener('click', function() {
+                alert('Fonctionnalité de visualisation du ticket à implémenter');
+                // Ici, vous pourriez rediriger vers la section "Mes Tickets" ou afficher un modal
+            });
+        });
+    </script>
+</body>
+</html>
